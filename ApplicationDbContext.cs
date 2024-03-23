@@ -5,6 +5,7 @@ using StudyBuddy.Models;
 
 namespace StudyBuddy
 {
+    // class for handling a database instances
     public class ApplicationDbContext : IdentityDbContext<IdentityUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
