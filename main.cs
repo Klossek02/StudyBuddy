@@ -7,6 +7,7 @@ using System.Data;
 using StudyBuddy.Models;
 using StudyBuddy;
 using Microsoft.OpenApi.Models;
+using NETCore.MailKit.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,10 +18,10 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API StudyBuddy", Version = "v1" });
 });
 
-// Add services to the container.
+// adding services to the container
 builder.Services.AddRazorPages();
 
-// Add DbContext and Identity
+// adding DbContext and Identity
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -28,7 +29,7 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// Add Authentication with JWT Tokens
+// adding Authentication with JWT Tokens
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -46,7 +47,7 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// configuring HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -65,14 +66,3 @@ app.MapControllers();
 app.MapRazorPages();
 
 app.Run();
-
-
-
-
-
-
-
-
-
-
-
