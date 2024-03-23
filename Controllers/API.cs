@@ -1,11 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using StudyBuddy.Models;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Logging;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 
 namespace StudyBuddy.Controllers
@@ -22,6 +18,30 @@ namespace StudyBuddy.Controllers
             _context = context;
             _userManager = userManager;
         }
+
+        // model for student
+        public class StudentModel
+        {
+            [Required]
+            [StringLength(100)]
+            public string FirstName { get; set; }
+
+            [Required]
+            [StringLength(100)]
+            public string LastName { get; set; }
+
+            [Required]
+            [EmailAddress]
+            public string Email { get; set; }
+
+            [Required]
+            [EmailAddress]
+            public string EmailVerified { get; set; }
+
+            [Required]
+            public DateTime RegistrationDate { get; set; }
+        }
+
 
         // GET: api/Students
         [HttpGet]
@@ -42,24 +62,9 @@ namespace StudyBuddy.Controllers
             return Ok(students);
         }
 
-        public class StudentCreateModel
-        {
-            [Required]
-            [StringLength(100)]
-            public string FirstName { get; set; }
-
-            [Required]
-            [StringLength(100)]
-            public string LastName { get; set; }
-
-            [Required]
-            [EmailAddress]
-            public string Email { get; set; }
-        }
-
-
+        // POST: api/Students
         [HttpPost]
-        public async Task<IActionResult> CreateStudent([FromBody] StudentCreateModel model)
+        public async Task<IActionResult> CreateStudent([FromBody] StudentModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -71,7 +76,7 @@ namespace StudyBuddy.Controllers
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 Email = model.Email,
-                EmailVerified = false, // default value
+                EmailVerified = false, // default value (we update it after confirmation)
                 RegistrationDate = DateTime.UtcNow
             };
 
@@ -81,8 +86,9 @@ namespace StudyBuddy.Controllers
             return CreatedAtAction(nameof(GetStudent), new { id = student.StudentId }, student);
         }
 
+        // PUT: api/Students/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateStudent(int id, [FromBody] StudentCreateModel model)
+        public async Task<IActionResult> UpdateStudent(int id, [FromBody] StudentModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -105,6 +111,7 @@ namespace StudyBuddy.Controllers
             return NoContent();
         }
 
+        // POST: api/Students/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Student>> GetStudent(int id)
         {
@@ -128,6 +135,22 @@ namespace StudyBuddy.Controllers
             return Ok(student);
         }
 
+        // DELETE: api/Students/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStudent(int id)
+        {
+            var student = await _context.Students.FindAsync(id);
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            _context.Students.Remove(student);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
         // other POST, PUT, DELETE methods if needed
     }
 
@@ -143,6 +166,7 @@ namespace StudyBuddy.Controllers
             _context = context;
         }
 
+        // model for Tutor
         public class TutorCreateModel
         {
             [Required]
@@ -156,17 +180,16 @@ namespace StudyBuddy.Controllers
             [Required]
             [EmailAddress]
             public string Email { get; set; }
-            public string ExpertiseArea { get; set; }
-        }
 
-        public class TutorDTO
-        {
-            public int TutorId { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            public string Email { get; set; }
-            public bool EmailVerified { get; set; }
+            [Required]
+            [EmailAddress]
+            public string EmailVerified { get; set; }
+
+            [Required]
+            [StringLength(100)]
             public string ExpertiseArea { get; set; }
+
+            [Required]
             public DateTime RegistrationDate { get; set; }
         }
 
@@ -175,7 +198,7 @@ namespace StudyBuddy.Controllers
         public async Task<IActionResult> GetTutors()
         {
             var tutors = await _context.Tutors
-                .Select(tutor => new TutorDTO
+                .Select(tutor => new Tutor // Studybuddy.Models.Tutor
                 {
                     TutorId = tutor.TutorId,
                     FirstName = tutor.FirstName,
@@ -196,7 +219,7 @@ namespace StudyBuddy.Controllers
         {
             var tutor = await _context.Tutors
                 .Where(t => t.TutorId == id)
-                .Select(tutor => new TutorDTO
+                .Select(tutor => new Tutor
                 {
                     TutorId = tutor.TutorId,
                     FirstName = tutor.FirstName,
@@ -231,7 +254,7 @@ namespace StudyBuddy.Controllers
                 LastName = model.LastName,
                 Email = model.Email,
                 ExpertiseArea = model.ExpertiseArea,
-                EmailVerified = false, // default value
+                EmailVerified = false, // default value (we update it after confirmation)
                 RegistrationDate = DateTime.UtcNow
             };
 
@@ -286,7 +309,6 @@ namespace StudyBuddy.Controllers
     }
 
 
-
     [Route("api/[controller]")]
     [ApiController]
     public class AdminsController : ControllerBase
@@ -300,6 +322,7 @@ namespace StudyBuddy.Controllers
             _userManager = userManager;
         }
 
+        // model for Admin
         public class AdminCreateModel
         {
             [Required]
@@ -315,24 +338,18 @@ namespace StudyBuddy.Controllers
             public string Email { get; set; }
 
             [Required]
-            public string Password { get; set; } // for simplicity, assuming plain text to be hashed in controller/service
-        }
-
-        public class AdminDTO
-        {
-            public int AdminId { get; set; }
-            public string DisplayName { get; set; }
-            public string Username { get; set; }
-            public string Email { get; set; }
+            public string Password { get; set; } // for simplicity, plain text is hashed
+            
+            [Required]
             public DateTime RegistrationDate { get; set; }
         }
 
         // GET: api/Admins
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<AdminDTO>>> GetAdmins()
+        public async Task<ActionResult<IEnumerable<Admin>>> GetAdmins()
         {
             var admins = await _context.Admins
-                .Select(a => new AdminDTO
+                .Select(a => new Admin
                 {
                     AdminId = a.AdminId,
                     DisplayName = a.DisplayName,
@@ -347,7 +364,7 @@ namespace StudyBuddy.Controllers
 
         // POST: api/Admins
         [HttpPost]
-        public async Task<ActionResult<AdminDTO>> CreateAdmin([FromBody] AdminCreateModel model)
+        public async Task<ActionResult<Admin>> CreateAdmin([FromBody] AdminCreateModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -374,7 +391,7 @@ namespace StudyBuddy.Controllers
             _context.Admins.Add(admin);
             await _context.SaveChangesAsync();
 
-            var dto = new AdminDTO
+            var dto = new Admin
             {
                 AdminId = admin.AdminId,
                 DisplayName = admin.DisplayName,
@@ -386,9 +403,9 @@ namespace StudyBuddy.Controllers
             return CreatedAtAction(nameof(GetAdmin), new { id = admin.AdminId }, dto);
         }
 
-        // GET by Id (placeholder)
+        // GET api/Admins/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<AdminDTO>> GetAdmin(int id)
+        public async Task<ActionResult<Admin>> GetAdmin(int id)
         {
             var admin = await _context.Admins.FindAsync(id);
 
@@ -397,7 +414,7 @@ namespace StudyBuddy.Controllers
                 return NotFound();
             }
 
-            return new AdminDTO
+            return new Admin
             {
                 AdminId = admin.AdminId,
                 DisplayName = admin.DisplayName,
