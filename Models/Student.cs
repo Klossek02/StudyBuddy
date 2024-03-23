@@ -1,5 +1,6 @@
 ﻿namespace StudyBuddy.Models
 {
+// defining Student fields
     public class Student
     {
         public int StudentId { get; set; }
