@@ -8,6 +8,8 @@ using StudyBuddy.Models;
 using StudyBuddy;
 using Microsoft.OpenApi.Models;
 using NETCore.MailKit.Core;
+using StudyBuddy.Services;
+using StudyBuddy.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,14 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API StudyBuddy", Version = "v1" });
 });
+
+// Register services and resources
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentResource, StudentResource>();
+builder.Services.AddScoped<ITutorService, TutorService>();
+builder.Services.AddScoped<ITutorResource, TutorResource>();
+builder.Services.AddScoped<IAdminResource, AdminResource>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 // adding services to the container
 builder.Services.AddRazorPages();

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StudyBuddy.DTO;
 using StudyBuddy.Models;
+using StudyBuddy.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace StudyBuddy.Controllers
@@ -9,56 +11,18 @@ namespace StudyBuddy.Controllers
     [ApiController]
     public class TutorController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ITutorService _tutorService;
 
-        public TutorController(ApplicationDbContext context)
+        public TutorController(ITutorService tutorService)
         {
-            _context = context;
-        }
-
-        public class TutorCreateModel
-        {
-            [Required]
-            [StringLength(100)]
-            public string FirstName { get; set; }
-
-            [Required]
-            [StringLength(100)]
-            public string LastName { get; set; }
-
-            [Required]
-            [EmailAddress]
-            public string Email { get; set; }
-            public string ExpertiseArea { get; set; }
-        }
-
-        public class TutorDTO
-        {
-            public int TutorId { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            public string Email { get; set; }
-            public bool EmailVerified { get; set; }
-            public string ExpertiseArea { get; set; }
-            public DateTime RegistrationDate { get; set; }
+            _tutorService = tutorService;
         }
 
         // GET: api/Tutors
         [HttpGet]
         public async Task<IActionResult> GetTutors()
         {
-            var tutors = await _context.Tutors
-                .Select(tutor => new TutorDTO
-                {
-                    TutorId = tutor.TutorId,
-                    FirstName = tutor.FirstName,
-                    LastName = tutor.LastName,
-                    Email = tutor.Email,
-                    EmailVerified = tutor.EmailVerified,
-                    ExpertiseArea = tutor.ExpertiseArea,
-                    RegistrationDate = tutor.RegistrationDate
-                })
-                .ToListAsync();
+            IEnumerable<TutorDto> tutors = await _tutorService.GetAllTutorsAsync();
 
             return Ok(tutors);
         }
@@ -66,20 +30,8 @@ namespace StudyBuddy.Controllers
         // GET: api/Tutors/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTutor(int id)
-        {
-            var tutor = await _context.Tutors
-                .Where(t => t.TutorId == id)
-                .Select(tutor => new TutorDTO
-                {
-                    TutorId = tutor.TutorId,
-                    FirstName = tutor.FirstName,
-                    LastName = tutor.LastName,
-                    Email = tutor.Email,
-                    EmailVerified = tutor.EmailVerified,
-                    ExpertiseArea = tutor.ExpertiseArea,
-                    RegistrationDate = tutor.RegistrationDate
-                })
-                .FirstOrDefaultAsync();
+        {            
+            var tutor = await _tutorService.GetTutorByIdAsync(id);
 
             if (tutor == null)
             {
@@ -98,19 +50,7 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var tutor = new Tutor
-            {
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                Email = model.Email,
-                PasswordHash = "#####",
-                ExpertiseArea = model.ExpertiseArea,
-                EmailVerified = false, // default value
-                RegistrationDate = DateTime.UtcNow
-            };
-
-            _context.Tutors.Add(tutor);
-            await _context.SaveChangesAsync();
+            var tutor = await _tutorService.CreateTutorAsync(model);
 
             return CreatedAtAction(nameof(GetTutor), new { id = tutor.TutorId }, tutor);
         }
@@ -124,19 +64,11 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var tutor = await _context.Tutors.FindAsync(id);
-            if (tutor == null)
+            var success = await _tutorService.UpdateTutorAsync(id, model);
+            if (!success)
             {
-                return NotFound();
+                return NotFound(); // Indicate that the tutor was not found
             }
-
-            tutor.FirstName = model.FirstName;
-            tutor.LastName = model.LastName;
-            tutor.Email = model.Email;
-            tutor.ExpertiseArea = model.ExpertiseArea;
-            // not updating EmailVerified and RegistrationDate here as well
-
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -145,14 +77,11 @@ namespace StudyBuddy.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTutor(int id)
         {
-            var tutor = await _context.Tutors.FindAsync(id);
-            if (tutor == null)
+            var success = await _tutorService.DeleteTutorAsync(id);
+            if (!success)
             {
-                return NotFound();
+                return NotFound(); // Indicate that the tutor was not found
             }
-
-            _context.Tutors.Remove(tutor);
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }

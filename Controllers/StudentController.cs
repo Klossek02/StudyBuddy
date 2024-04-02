@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StudyBuddy.DTO;
 using StudyBuddy.Models;
+using StudyBuddy.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace StudyBuddy.Controllers
@@ -10,49 +12,20 @@ namespace StudyBuddy.Controllers
     [ApiController]
     public class StudentController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly IStudentService _studentService;
 
-        public StudentController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public StudentController(IStudentService studentService)
         {
-            _context = context;
-            _userManager = userManager;
+            _studentService = studentService;
         }
 
         // GET: api/Students
         [HttpGet]
         public async Task<IActionResult> GetStudents()
         {
-            var students = await _context.Students
-                .Select(student => new
-                {
-                    student.StudentId,
-                    student.FirstName,
-                    student.LastName,
-                    student.Email,
-                    student.EmailVerified,
-                    student.RegistrationDate
-                })
-                .ToListAsync();
-
+            IEnumerable<StudentDto> students = await _studentService.GetAllStudentsAsync();
             return Ok(students);
         }
-
-        public class StudentCreateModel
-        {
-            [Required]
-            [StringLength(100)]
-            public string FirstName { get; set; }
-
-            [Required]
-            [StringLength(100)]
-            public string LastName { get; set; }
-
-            [Required]
-            [EmailAddress]
-            public string Email { get; set; }
-        }
-
 
         [HttpPost]
         public async Task<IActionResult> CreateStudent([FromBody] StudentCreateModel model)
@@ -62,19 +35,7 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var student = new Student
-            {
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                Email = model.Email,
-                PasswordHash = "#####",
-                EmailVerified = false, // default value
-                RegistrationDate = DateTime.UtcNow
-            };
-
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
-
+            var student = await _studentService.CreateStudentAsync(model);
             return CreatedAtAction(nameof(GetStudent), new { id = student.StudentId }, student);
         }
 
@@ -86,36 +47,20 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var student = await _context.Students.FindAsync(id);
-            if (student == null)
+            var success = await _studentService.UpdateStudentAsync(id, model);
+            if (!success)
             {
-                return NotFound();
+                return NotFound(); // Indicate that the student was not found
             }
 
-            student.FirstName = model.FirstName;
-            student.LastName = model.LastName;
-            student.Email = model.Email;
-            // not updating EmailVerified and RegistrationDate here
+            return NoContent(); // Indicate successful update with no content to return
 
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Student>> GetStudent(int id)
+        public async Task<ActionResult<StudentDto>> GetStudent(int id)
         {
-            var student = await _context.Students
-                .Select(student => new
-                {
-                    student.StudentId,
-                    student.FirstName,
-                    student.LastName,
-                    student.Email,
-                    student.EmailVerified,
-                    student.RegistrationDate
-                })
-                .FirstOrDefaultAsync(s => s.StudentId == id);
+            var student = await _studentService.GetStudentByIdAsync(id);
 
             if (student == null)
             {
