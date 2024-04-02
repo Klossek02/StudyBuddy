@@ -10,6 +10,7 @@ using Microsoft.OpenApi.Models;
 using NETCore.MailKit.Core;
 using StudyBuddy.Services;
 using StudyBuddy.Resources;
+using StudyBuddy.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,10 @@ builder.Services.AddScoped<ITutorService, TutorService>();
 builder.Services.AddScoped<ITutorResource, TutorResource>();
 builder.Services.AddScoped<IAdminResource, AdminResource>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+
+builder.Services.AddScoped<PasswordHasher<TutorCreateModel>>();
+builder.Services.AddScoped<PasswordHasher<StudentCreateModel>>();
+builder.Services.AddScoped<PasswordHasher<UserModel>>();
 
 // adding services to the container
 builder.Services.AddRazorPages();

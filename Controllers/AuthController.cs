@@ -6,6 +6,8 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using StudyBuddy.Models;
+using StudyBuddy.DTO;
+using Microsoft.EntityFrameworkCore;
 
 namespace StudyBuddy.Controllers
 {
@@ -15,38 +17,70 @@ namespace StudyBuddy.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly PasswordHasher<UserModel> _passwordHasher;
+        private readonly ApplicationDbContext _applicationDbContext;
 
-        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration)
+        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration,
+            PasswordHasher<UserModel> passwordHasher, ApplicationDbContext applicationDbContext)
         {
             _userManager = userManager;
             _configuration = configuration;
-        }
-
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterModel model)
-        {
-            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
-            {
-                return Ok();
-            }
-            return BadRequest(result.Errors);
+            _passwordHasher = passwordHasher;
+            _applicationDbContext = applicationDbContext;   
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-            {
-                var token = GenerateJwtToken(user);
+            //var user = await _userManager.FindByEmailAsync(model.Email); // not working
 
-                return Ok(new TokenModel { Token = token, Expiration = DateTime.UtcNow.AddHours(2) });
+            // checking Admins, Students and Tutors table (I know not the best way to do this)
+            var user = await _applicationDbContext.Admins
+                .Select(admin => new UserModel
+                {
+                    Email = admin.Email,
+                    PasswordHash = admin.PasswordHash
+                })
+                .FirstOrDefaultAsync(s => s.Email == model.Email);
+            if (user == null)
+            {
+                user = await _applicationDbContext.Students
+                .Select(student => new UserModel
+                {
+                    Email = student.Email,
+                    PasswordHash = student.PasswordHash
+                })
+                .FirstOrDefaultAsync(s => s.Email == model.Email);
+
+                if (user == null)
+                {
+                    user = await _applicationDbContext.Tutors.Select(t => new UserModel
+                    {
+                        Email = t.Email,
+                        PasswordHash = t.PasswordHash
+                    }).FirstOrDefaultAsync(s => s.Email == model.Email);
+                }
             }
 
-            return Unauthorized();
+            if (user == null)
+            {
+                return BadRequest("Invalid email or password.");
+            }
+
+            // Verify the password
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+            if (result == PasswordVerificationResult.Success)
+            {
+                // Password is correct, perform login
+                //var token = GenerateJwtToken(user);
+
+                //return Ok(new TokenModel { Token = token, Expiration = DateTime.UtcNow.AddHours(2) });
+                return Ok("Login successful");
+            }
+            else
+            {
+                return BadRequest("Invalid email or password.");
+            }
         }
 
         private string GenerateJwtToken(IdentityUser user)
@@ -66,17 +100,5 @@ namespace StudyBuddy.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
-    }
-
-    public class RegisterModel
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
-    }
-
-    public class LoginModel
-    {
-        public string Email { get; set; }
-        public string Password { get; set; }
     }
 }

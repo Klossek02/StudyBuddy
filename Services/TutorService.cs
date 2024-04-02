@@ -1,4 +1,5 @@
-﻿using StudyBuddy.DTO;
+﻿using Microsoft.AspNetCore.Identity;
+using StudyBuddy.DTO;
 using StudyBuddy.Models;
 using StudyBuddy.Resources;
 
@@ -7,14 +8,29 @@ namespace StudyBuddy.Services
     public class TutorService : ITutorService
     {
         private readonly ITutorResource _tutorResource;
+        private readonly PasswordHasher<TutorCreateModel> _passwordHasher;
 
-        public TutorService(ITutorResource tutorResource)
+        public TutorService(ITutorResource tutorResource, PasswordHasher<TutorCreateModel> passwordHasher)
         {
             _tutorResource = tutorResource;
+            _passwordHasher = passwordHasher;
         }
         public async Task<Tutor> CreateTutorAsync(TutorCreateModel model)
         {
-            return await _tutorResource.CreateTutor(model);
+            string hashedPassword = _passwordHasher.HashPassword(model, model.Password);
+
+            var tutor = new Tutor
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                PasswordHash = hashedPassword,
+                ExpertiseArea = model.ExpertiseArea,
+                EmailVerified = false, // default value
+                RegistrationDate = DateTime.UtcNow
+            };
+
+            return await _tutorResource.CreateTutor(tutor);
         }
 
         public async Task<bool> DeleteTutorAsync(int id)

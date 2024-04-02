@@ -9,46 +9,32 @@ namespace StudyBuddy.Services
     public class StudentService : IStudentService
     {
         private readonly IStudentResource _studentResource;
-        private readonly UserManager<IdentityUser> _userManager;
-
-        public StudentService(IStudentResource studentResource, UserManager<IdentityUser> userManager)
+        private readonly PasswordHasher<StudentCreateModel> _passwordHasher;
+        public StudentService(IStudentResource studentResource, PasswordHasher<StudentCreateModel> passwordHasher)
         {
             _studentResource = studentResource;
-            _userManager = userManager;
+            _passwordHasher = passwordHasher;
         }
 
         public async Task<Student> CreateStudentAsync(StudentCreateModel model)
         {
-            // Business logic/validation can be added here if needed
+            string hashedPassword = _passwordHasher.HashPassword(model, model.Password);
 
-            var user = new IdentityUser { UserName = model.FirstName, Email = model.Email };
-            var result = await _userManager.CreateAsync(user, model.Password); // hashes the password
+            var student = new Student
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                PasswordHash = hashedPassword,
+                EmailVerified = false, // default value
+                RegistrationDate = DateTime.UtcNow
+            };
 
-            if (result.Succeeded)
-            {
-                var student = new Student
-                {
-                    FirstName = model.FirstName,
-                    LastName = model.LastName,
-                    Email = model.Email,
-                    PasswordHash = user.PasswordHash,
-                    EmailVerified = false, // default value
-                    RegistrationDate = DateTime.UtcNow
-                };
-                return await _studentResource.CreateStudent(student);
-            } 
-            else
-            {
-                await Console.Out.WriteLineAsync("error hashing the password");
-            }
-            return new Student();
-            
+            return await _studentResource.CreateStudent(student);                        
         }
 
         public async Task<bool> UpdateStudentAsync(int id, StudentCreateModel model)
         {
-            // Business logic/validation can be added here if needed
-
             return await _studentResource.UpdateStudent(id, model);
         }
 
@@ -62,9 +48,9 @@ namespace StudyBuddy.Services
             return await _studentResource.GetStudents();
         }
 
-        public Task<bool> DeleteStudentAsync(int id)
+        public async Task<bool> DeleteStudentAsync(int id)
         {
-            throw new NotImplementedException();
+            return await _studentResource.DeleteStudent(id);
         }
     }
 

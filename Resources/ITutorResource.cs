@@ -5,7 +5,7 @@ namespace StudyBuddy.Resources
 {
     public interface ITutorResource
     {
-        Task<Tutor> CreateTutor(TutorCreateModel model);
+        Task<Tutor> CreateTutor(Tutor tutor);
         Task<bool> UpdateTutor(int id, TutorCreateModel model);
         Task<TutorDto?> GetTutor(int id);
         Task<IEnumerable<TutorDto>> GetTutors();

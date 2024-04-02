@@ -72,5 +72,18 @@ namespace StudyBuddy.Resources
                 })
                 .ToListAsync();
         }
+
+        public async Task<bool> DeleteStudent(int id)
+        {
+            var student = await _context.Students.FindAsync(id);
+            if (student == null)
+            {
+                return false;
+            }
+
+            _context.Students.Remove(student);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

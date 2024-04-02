@@ -14,19 +14,8 @@ namespace StudyBuddy.Resources
             _context = context;
         }
 
-        public async Task<Tutor> CreateTutor(TutorCreateModel model)
+        public async Task<Tutor> CreateTutor(Tutor tutor)
         {
-            var tutor = new Tutor
-            {
-                FirstName = model.FirstName,
-                LastName = model.LastName,
-                Email = model.Email,
-                PasswordHash = "#####",
-                ExpertiseArea = model.ExpertiseArea,
-                EmailVerified = false, // default value
-                RegistrationDate = DateTime.UtcNow
-            };
-
             _context.Tutors.Add(tutor);
             await _context.SaveChangesAsync();
             return tutor;

@@ -10,5 +10,7 @@ namespace StudyBuddy.Resources
         Task<bool> UpdateStudent(int id, StudentCreateModel model);
         Task<StudentDto?> GetStudent(int id);
         Task<IEnumerable<StudentDto>> GetStudents();
+
+        Task<bool> DeleteStudent(int id);
     }
 }
