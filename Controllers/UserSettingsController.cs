@@ -32,10 +32,10 @@ namespace StudyBuddy.Controllers
 
             if (!success)
             {
-                return NotFound(); // Student not found
+                return NotFound(); 
             }
 
-            return NoContent(); // Success, no content to return
+            return NoContent(); 
         }
 
         [HttpPut("update-tutor/{id}")]
@@ -50,12 +50,11 @@ namespace StudyBuddy.Controllers
 
             if (!success)
             {
-                return NotFound(); // Tutor not found
+                return NotFound(); 
             }
 
-            return NoContent(); // Success, no content to return
+            return NoContent(); 
         }
 
-        // Additional methods for Admin and other roles can be added here following the same structure
     }
 }
