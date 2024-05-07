@@ -23,6 +23,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API StudyBuddy", Version = "v1" });
 });
 
+builder.Services.AddCors(p => p.AddPolicy("corspolicy", build =>
+{
+    build.WithOrigins("*").AllowAnyMethod().AllowAnyHeader();
+}));
+
 // Register services and resources
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentResource, StudentResource>();
@@ -105,6 +110,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("corspolicy");
+
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
