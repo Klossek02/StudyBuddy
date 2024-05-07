@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyBuddy.DTO;
 using StudyBuddy.Models;
@@ -30,7 +30,7 @@ namespace StudyBuddy.Controllers
         // GET: api/Tutors/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTutor(int id)
-        {            
+        {
             var tutor = await _tutorService.GetTutorByIdAsync(id);
 
             if (tutor == null)
@@ -55,7 +55,7 @@ namespace StudyBuddy.Controllers
             return CreatedAtAction(nameof(GetTutor), new { id = tutor.TutorId }, tutor);
         }
 
-        // PUT: api/Tutors/{id}
+        // PUT: api/Tutors/{id} -- Update tutor details including settings (user setting adjustment)
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTutor(int id, [FromBody] TutorCreateModel model)
         {
@@ -64,13 +64,19 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var success = await _tutorService.UpdateTutorAsync(id, model);
-            if (!success)
+            var tutor = await _tutorService.GetTutorByIdAsync(id);
+            if (tutor == null)
             {
-                return NotFound(); // Indicate that the tutor was not found
+                return NotFound();
             }
 
-            return NoContent();
+            bool success = await _tutorService.UpdateTutorAsync(id, model);
+            if (!success)
+            {
+                return StatusCode(500, "Unable to update the tutor information."); // more specific error explanation
+            }
+
+            return NoContent(); // successfully updated
         }
 
         // DELETE: api/Tutors/{id}
@@ -80,7 +86,7 @@ namespace StudyBuddy.Controllers
             var success = await _tutorService.DeleteTutorAsync(id);
             if (!success)
             {
-                return NotFound(); // Indicate that the tutor was not found
+                return NotFound(); // indicate that the tutor was not found
             }
 
             return NoContent();
