@@ -8,26 +8,76 @@ using StudyBuddy.Models;
 using StudyBuddy;
 using Microsoft.OpenApi.Models;
 using NETCore.MailKit.Core;
+using StudyBuddy.Services;
+using StudyBuddy.Resources;
+using StudyBuddy.Controllers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer(); 
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API StudyBuddy", Version = "v1" });
 });
 
+builder.Services.AddCors(p => p.AddPolicy("corspolicy", build =>
+{
+    build.WithOrigins("*").AllowAnyMethod().AllowAnyHeader();
+}));
+
+// Register services and resources
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentResource, StudentResource>();
+builder.Services.AddScoped<ITutorService, TutorService>();
+builder.Services.AddScoped<ITutorResource, TutorResource>();
+builder.Services.AddScoped<IAdminResource, AdminResource>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+
+builder.Services.AddScoped<PasswordHasher<TutorCreateModel>>();
+builder.Services.AddScoped<PasswordHasher<StudentCreateModel>>();
+builder.Services.AddScoped<PasswordHasher<UserModel>>();
+
 // adding services to the container
 builder.Services.AddRazorPages();
 
+
+
 // adding DbContext and Identity
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+/*
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.AddScoped<IStudentService, StudentService>(); // Register StudentService
+builder.Services.AddScoped(typeof(PasswordHasher<StudentCreateModel>)); // Register PasswordHasher for StudentCreateModel
+*/
+
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+{
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+}
+)
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<PasswordHasher<IdentityUser>>();
+
+
+
+// Configure strongly typed settings objects
+var jwtSection = builder.Configuration.GetSection("JwtSettings");
+builder.Services.Configure<JwtSettings>(jwtSection);
+
+// Configure JWT authentication
+var jwtSettings = jwtSection.Get<JwtSettings>();
+var key = Encoding.ASCII.GetBytes(jwtSettings.SecretKey);
+
 
 // adding Authentication with JWT Tokens
 builder.Services.AddAuthentication(options =>
@@ -36,14 +86,21 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("YourSuperSecretKeyHere")),
-        ValidateIssuer = false,
-        ValidateAudience = false
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero  // overriding default clock of 5 mins
     };
 });
+
 
 var app = builder.Build();
 
@@ -53,6 +110,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("corspolicy");
+
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
