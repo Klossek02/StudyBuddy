@@ -20,6 +20,12 @@ namespace StudyBuddy.Controllers
             _userManager = userManager;
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public IStudentService Get_studentService()
+        {
+            return _studentService;
+        }
+
         [HttpPut("update-student/{id}")]
         public async Task<IActionResult> UpdateStudent(int id, [FromBody] Student model)
         {
