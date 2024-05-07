@@ -1,104 +1,193 @@
-﻿using System;
-using System.IdentityModel.Tokens.Jwt;
+using System;
+using System.IdentityModel.Tokens.Jwt; // for handling JWT (JSON Web Tokens) 
 using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens; // for handling JWT (JSON Web Tokens) 
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity; //  for user management and authentication in ASP.NET Core applications
 using StudyBuddy.Models;
-using StudyBuddy.DTO;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography; // for generating secure random numbers, important for creating secure tokens
+
 
 namespace StudyBuddy.Controllers
 {
+    // declares AuthController as a controller with route Auth (inferred from the controller’s name 
+    // "Controller") that can handle HTTP requests
     [ApiController]
     [Route("[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
-        private readonly PasswordHasher<UserModel> _passwordHasher;
+        private readonly PasswordHasher<IdentityUser> _passwordHasher;
         private readonly ApplicationDbContext _applicationDbContext;
 
         public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration,
-            PasswordHasher<UserModel> passwordHasher, ApplicationDbContext applicationDbContext)
+                              PasswordHasher<IdentityUser> passwordHasher, ApplicationDbContext applicationDbContext)
         {
-            _userManager = userManager;
-            _configuration = configuration;
-            _passwordHasher = passwordHasher;
-            _applicationDbContext = applicationDbContext;   
+            _userManager = userManager; // manages users in the Identity system (creation, deletion, searching, etc.).
+            _configuration = configuration; // to access application settings (like JWT settings)
+            _passwordHasher = passwordHasher; // provides password hashing functionality to securely store user passwords
+            _applicationDbContext = applicationDbContext; // for database access, particularly for managing refresh tokens
         }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            var user = new IdentityUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                EmailConfirmed = true  //confirming the email directly for testing or initial setup
+            };
+
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+
+            if (result.Succeeded)
+            {
+                
+
+                return Ok("User created successfully");
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+        }
+
+        // attempts to find a user by email, verify the password, generate a new refresh token
+        // and a JWT access token, and then returns these tokens if the user is authenticated successfully.
+        // attempts to find a user by email, verify the password, generate a new refresh token
+        // and a JWT access token, and then returns these tokens if the user is authenticated successfully.
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
-            //var user = await _userManager.FindByEmailAsync(model.Email); // not working
-
-            // checking Admins, Students and Tutors table (I know not the best way to do this)
-            var user = await _applicationDbContext.Admins
-                .Select(admin => new UserModel
-                {
-                    Email = admin.Email,
-                    PasswordHash = admin.PasswordHash
-                })
-                .FirstOrDefaultAsync(s => s.Email == model.Email);
+            var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
-            {
-                user = await _applicationDbContext.Students
-                .Select(student => new UserModel
-                {
-                    Email = student.Email,
-                    PasswordHash = student.PasswordHash
-                })
-                .FirstOrDefaultAsync(s => s.Email == model.Email);
+                return BadRequest("User does not exist.");
 
-                if (user == null)
-                {
-                    user = await _applicationDbContext.Tutors.Select(t => new UserModel
-                    {
-                        Email = t.Email,
-                        PasswordHash = t.PasswordHash
-                    }).FirstOrDefaultAsync(s => s.Email == model.Email);
-                }
-            }
+            var passwordValid = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordValid)
+                return BadRequest("Password is incorrect.");
 
-            if (user == null)
+            var refreshToken = new RefreshToken
             {
-                return BadRequest("Invalid email or password.");
-            }
+                Token = GenerateToken(),
+                UserId = user.Id,
+                Expires = DateTime.UtcNow.AddDays(7),
+                Created = DateTime.UtcNow
+            };
 
-            // Verify the password
-            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
-            if (result == PasswordVerificationResult.Success)
-            {
-                // Password is correct, perform login
-                //var token = GenerateJwtToken(user);
+            _applicationDbContext.RefreshTokens.Add(refreshToken);
+            await _applicationDbContext.SaveChangesAsync();
 
-                //return Ok(new TokenModel { Token = token, Expiration = DateTime.UtcNow.AddHours(2) });
-                return Ok("Login successful");
-            }
-            else
+            var accessToken = GenerateJwtToken(user);
+            return Ok(new AuthResponse
             {
-                return BadRequest("Invalid email or password.");
-            }
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpiresIn = DateTime.UtcNow.AddMinutes(15)
+            });
         }
 
+
+
+
+        // validates an existing refresh token, revokes it, and issues a new access and refresh token pair.
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            var token = await _applicationDbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Token == request.Token);
+            /*
+            if (token == null || token.Expires <= DateTime.UtcNow || token.Revoked != null)
+            {
+                return BadRequest("Invalid refresh token.");
+            }
+            */
+
+            var user = await _userManager.FindByIdAsync(token.UserId);
+            if (user == null)
+            {
+                return BadRequest("User not found.");
+            }
+
+            var newAccessToken = GenerateJwtToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+            newRefreshToken.UserId = user.Id;
+
+            // checking if the old refreshToken has a replacement and handle it properly
+            if (!string.IsNullOrEmpty(token.ReplacedByToken))
+            {
+                // handling the logic (we can ignore for now)
+            }
+
+            // revoking old refreshToken and add the new one
+            token.Revoked = DateTime.UtcNow;
+            token.ReplacedByToken = newRefreshToken.Token;
+
+            _applicationDbContext.RefreshTokens.Add(newRefreshToken);
+            await _applicationDbContext.SaveChangesAsync();
+
+            return Ok(new AuthResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken.Token,
+                ExpiresIn = DateTime.UtcNow.AddMinutes(15)  // expiration time --> JWT Token
+            });
+        }
+
+        // HELPER METHODS
+
+        // generates a JWT using the user’s details and application settings for token validation criteria
+        // like issuer and audience
         private string GenerateJwtToken(IdentityUser user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:Secret"]); // our secret key
+            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"]);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email)
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim("id", user.Id)  // claim (custom one) 
                 }),
-                Expires = DateTime.UtcNow.AddHours(3),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                Expires = DateTime.UtcNow.AddMinutes(15),  // access token short lifespan
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                Issuer = _configuration["JwtSettings:Issuer"],
+                Audience = _configuration["JwtSettings:Audience"]
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+        // creates a new refresh token with a unique token string, expiry date, and creation date
+        private RefreshToken GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return new RefreshToken
+                {
+                    Token = Convert.ToBase64String(randomNumber),
+                    Expires = DateTime.UtcNow.AddDays(7),  // refresh token long lifespan --> Refresh Token
+                    Created = DateTime.UtcNow
+                };
+            }
+        }
+
+        private string GenerateToken()
+        {
+            var randomNumber = new byte[32]; // adjusting size as necessary
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+                return Convert.ToBase64String(randomNumber); // converting to base64 string
+            }
         }
     }
 }
