@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyBuddy.DTO;
@@ -50,10 +50,10 @@ namespace StudyBuddy.Controllers
             var success = await _studentService.UpdateStudentAsync(id, model);
             if (!success)
             {
-                return NotFound(); // Indicate that the student was not found
+                return NotFound(); // indicate that the student was not found
             }
 
-            return NoContent(); // Indicate successful update with no content to return
+            return NoContent(); // indicate successful update with no content to return
 
         }
 
