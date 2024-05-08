@@ -1,0 +1,18 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  study-buddy:
+    container_name: study-buddy
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sql
+  sql:
+    image: "mcr.microsoft.com/mssql/server:latest"
+    container_name: sql_server_container3
+    ports: # not actually needed, because the two services are on the same network
+      - "1434:1434" 
+    environment:
+      - ACCEPT_EULA=y
+      - SA_PASSWORD=emF3Kos@w1q
