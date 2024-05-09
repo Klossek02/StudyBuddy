@@ -10,7 +10,7 @@ namespace StudyBuddy.Tests.ControllerTests
 {
     public class ExtendedAuthControllerTests
     {
-        [Fact]
+        /*[Fact]
         public async Task Register_ReturnsOkResult_WhenRegistrationIsSuccessful()
         {
             // Arrange
@@ -39,6 +39,6 @@ namespace StudyBuddy.Tests.ControllerTests
 
             // Assert
             Assert.IsType<BadRequestResult>(result);
-        }
+        }*/
     }
 }

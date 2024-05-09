@@ -10,9 +10,15 @@ services:
       - sql
   sql:
     image: "mcr.microsoft.com/mssql/server:latest"
-    container_name: sql_server_container3
+    container_name: sql
+    user: root
     ports: # not actually needed, because the two services are on the same network
-      - "1434:1434" 
+      - "1433:1433" 
     environment:
       - ACCEPT_EULA=y
       - SA_PASSWORD=emF3Kos@w1q
+    volumes:
+      - dbdata:/var/opt/mssql/data
+
+volumes:
+  dbdata:
