@@ -11,5 +11,8 @@
         public bool EmailVerified { get; set; } = false;
         public DateTime RegistrationDate { get; set; } = DateTime.Now;
 
+        // Navigation property
+        public ICollection<Lesson> Lessons { get; set; }
+
     }
 }

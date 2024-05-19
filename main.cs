@@ -35,6 +35,7 @@ builder.Services.AddScoped<ITutorService, TutorService>();
 builder.Services.AddScoped<ITutorResource, TutorResource>();
 builder.Services.AddScoped<IAdminResource, AdminResource>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ILessonService, LessonService>();
 
 builder.Services.AddScoped<PasswordHasher<TutorCreateModel>>();
 builder.Services.AddScoped<PasswordHasher<StudentCreateModel>>();
