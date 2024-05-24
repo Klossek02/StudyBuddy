@@ -126,4 +126,24 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
 
+// Seed roles
+await SeedRoles(app);
+
 app.Run();
+
+async Task SeedRoles(IApplicationBuilder app)
+{
+    using (var serviceScope = app.ApplicationServices.CreateScope())
+    {
+        var roleManager = serviceScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+        string[] roleNames = { "Admin", "Student", "Tutor" };
+        foreach (var roleName in roleNames)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+        }
+    }
+}

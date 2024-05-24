@@ -13,10 +13,12 @@ namespace StudyBuddy.Controllers
     public class StudentController : ControllerBase
     {
         private readonly IStudentService _studentService;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public StudentController(IStudentService studentService)
+        public StudentController(IStudentService studentService, UserManager<IdentityUser> userManager)
         {
             _studentService = studentService;
+            _userManager = userManager; 
         }
 
         // GET: api/Students
@@ -35,7 +37,22 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var student = await _studentService.CreateStudentAsync(model);
+            // Create the user
+            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            // Assign the "student" role
+            var roleResult = await _userManager.AddToRoleAsync(user, "Student");
+            if (!roleResult.Succeeded)
+            {
+                return BadRequest(roleResult.Errors);
+            }
+
+            var student = await _studentService.CreateStudentAsync(model, user.Id);
             return CreatedAtAction(nameof(GetStudent), new { id = student.StudentId }, student);
         }
 

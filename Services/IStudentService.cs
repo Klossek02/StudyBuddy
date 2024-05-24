@@ -9,7 +9,7 @@ namespace StudyBuddy.Services
         // Define methods for student operations
         Task<StudentDto?> GetStudentByIdAsync(int id);
         Task<IEnumerable<StudentDto>> GetAllStudentsAsync();
-        Task<Student> CreateStudentAsync(StudentCreateModel model);
+        Task<Student> CreateStudentAsync(StudentCreateModel model, string userId);
         Task<bool> UpdateStudentAsync(int id, StudentCreateModel model);
         Task<bool> DeleteStudentAsync(int id);
     }

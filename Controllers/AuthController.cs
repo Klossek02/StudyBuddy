@@ -32,6 +32,7 @@ namespace StudyBuddy.Controllers
             _applicationDbContext = applicationDbContext; // for database access, particularly for managing refresh tokens
         }
 
+        // can be deleted eventually :
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
@@ -39,16 +40,13 @@ namespace StudyBuddy.Controllers
             {
                 UserName = model.Email,
                 Email = model.Email,
-                EmailConfirmed = true  //confirming the email directly for testing or initial setup
+                EmailConfirmed = true  // confirming the email directly for testing or initial setup
             };
-
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
-            {
-                
-
+            {              
                 return Ok("User created successfully");
             }
             else
@@ -78,23 +76,26 @@ namespace StudyBuddy.Controllers
                 Token = GenerateToken(),
                 UserId = user.Id,
                 Expires = DateTime.UtcNow.AddDays(7),
-                Created = DateTime.UtcNow
+                Created = DateTime.UtcNow,
+                ReplacedByToken = null 
             };
 
             _applicationDbContext.RefreshTokens.Add(refreshToken);
             await _applicationDbContext.SaveChangesAsync();
 
             var accessToken = GenerateJwtToken(user);
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+
             return Ok(new AuthResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken.Token,
-                ExpiresIn = DateTime.UtcNow.AddMinutes(15)
-            });
+                ExpiresIn = DateTime.UtcNow.AddMinutes(15),
+                Role = role
+            }) ;
         }
-
-
-
 
         // validates an existing refresh token, revokes it, and issues a new access and refresh token pair.
         [HttpPost("refresh-token")]

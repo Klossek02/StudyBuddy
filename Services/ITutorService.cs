@@ -7,7 +7,7 @@ namespace StudyBuddy.Services
     {
         Task<TutorDto?> GetTutorByIdAsync(int id);
         Task<IEnumerable<TutorDto>> GetAllTutorsAsync();
-        Task<Tutor> CreateTutorAsync(TutorCreateModel model);
+        Task<Tutor> CreateTutorAsync(TutorCreateModel model, string userId);
         Task<bool> UpdateTutorAsync(int id, TutorCreateModel model);
         Task<bool> DeleteTutorAsync(int id);
     }

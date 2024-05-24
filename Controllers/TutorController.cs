@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyBuddy.DTO;
@@ -12,10 +13,12 @@ namespace StudyBuddy.Controllers
     public class TutorController : ControllerBase
     {
         private readonly ITutorService _tutorService;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public TutorController(ITutorService tutorService)
+        public TutorController(ITutorService tutorService, UserManager<IdentityUser> userManager)
         {
             _tutorService = tutorService;
+            _userManager = userManager; 
         }
 
         // GET: api/Tutors
@@ -50,7 +53,22 @@ namespace StudyBuddy.Controllers
                 return BadRequest(ModelState);
             }
 
-            var tutor = await _tutorService.CreateTutorAsync(model);
+            // Create the user
+            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            // Assign the "tutor" role
+            var roleResult = await _userManager.AddToRoleAsync(user, "Tutor");
+            if (!roleResult.Succeeded)
+            {
+                return BadRequest(roleResult.Errors);
+            }
+
+            var tutor = await _tutorService.CreateTutorAsync(model, user.Id);
 
             return CreatedAtAction(nameof(GetTutor), new { id = tutor.TutorId }, tutor);
         }

@@ -14,5 +14,7 @@
 
         // Navigation property
         public ICollection<Lesson> Lessons { get; set; }
+
+        public string UserId { get; set; }
     }
 }

@@ -16,7 +16,7 @@ namespace StudyBuddy.Services
             _passwordHasher = passwordHasher;
         }
 
-        public async Task<Student> CreateStudentAsync(StudentCreateModel model)
+        public async Task<Student> CreateStudentAsync(StudentCreateModel model, string userId)
         {
             string hashedPassword = _passwordHasher.HashPassword(model, model.Password);
 
@@ -27,7 +27,8 @@ namespace StudyBuddy.Services
                 Email = model.Email,
                 PasswordHash = hashedPassword,
                 EmailVerified = false, // default value
-                RegistrationDate = DateTime.UtcNow
+                RegistrationDate = DateTime.UtcNow,
+                UserId = userId
             };
 
             return await _studentResource.CreateStudent(student);                        

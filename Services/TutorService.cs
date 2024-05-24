@@ -15,7 +15,7 @@ namespace StudyBuddy.Services
             _tutorResource = tutorResource;
             _passwordHasher = passwordHasher;
         }
-        public async Task<Tutor> CreateTutorAsync(TutorCreateModel model)
+        public async Task<Tutor> CreateTutorAsync(TutorCreateModel model, string userId)
         {
             string hashedPassword = _passwordHasher.HashPassword(model, model.Password);
 
@@ -27,7 +27,8 @@ namespace StudyBuddy.Services
                 PasswordHash = hashedPassword,
                 ExpertiseArea = model.ExpertiseArea,
                 EmailVerified = false, // default value
-                RegistrationDate = DateTime.UtcNow
+                RegistrationDate = DateTime.UtcNow,
+                UserId = userId
             };
 
             return await _tutorResource.CreateTutor(tutor);
