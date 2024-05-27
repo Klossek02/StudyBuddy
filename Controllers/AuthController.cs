@@ -60,7 +60,8 @@ namespace StudyBuddy.Controllers
         // attempts to find a user by email, verify the password, generate a new refresh token
         // and a JWT access token, and then returns these tokens if the user is authenticated successfully.
 
-        [HttpPost("login")]
+        [HttpGet("login")]
+        [ProducesResponseType(typeof(AuthResponse), 200)]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -88,13 +89,39 @@ namespace StudyBuddy.Controllers
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
 
+            int id = 0;
+
+            // not sure if this is the best way to do it but we can change later
+            if (role == "Student")
+            {
+                id = _applicationDbContext.Students
+                    .Where(s => s.UserId == user.Id)
+                    .Select(s => s.StudentId)
+                    .FirstOrDefault();
+            }
+            else if (role == "Tutor")
+            {
+                id = _applicationDbContext.Tutors
+                    .Where(t => t.UserId == user.Id)
+                    .Select(t => t.TutorId)
+                    .FirstOrDefault();
+            }
+            else if (role == "Admin")
+            {
+                id = _applicationDbContext.Admins
+                    .Where(a => a.UserId.Equals(user.Id))
+                    .Select(a => a.AdminId)
+                    .FirstOrDefault();
+            }
+
             return Ok(new AuthResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken.Token,
                 ExpiresIn = DateTime.UtcNow.AddMinutes(15),
-                Role = role
-            }) ;
+                Role = role,
+                UserId = id
+            });
         }
 
         // validates an existing refresh token, revokes it, and issues a new access and refresh token pair.
