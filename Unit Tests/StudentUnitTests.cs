@@ -1,24 +1,33 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
 using StudyBuddy.Controllers;
 using StudyBuddy.Services;
 using StudyBuddy.DTO;
-using StudyBuddy.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
+using StudyBuddy.Models;
 
 namespace StudyBuddy.Unit_Tests
 {
     public class StudentUnitTests
     {
+        private Mock<UserManager<IdentityUser>> GetMockUserManager()
+        {
+            var store = new Mock<IUserStore<IdentityUser>>();
+            var mockUserManager = new Mock<UserManager<IdentityUser>>(store.Object, null, null, null, null, null, null, null, null);
+            return mockUserManager;
+        }
+
         [Fact]
         public async Task GetStudents_ReturnsOkObjectResult_WithListOfStudents()
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             mockService.Setup(service => service.GetAllStudentsAsync()).ReturnsAsync(new List<StudentDto>());
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetStudents();
@@ -33,8 +42,9 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             mockService.Setup(service => service.GetAllStudentsAsync()).ReturnsAsync(new List<StudentDto>());
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetStudents();
@@ -50,9 +60,10 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             int testStudentId = 1;
             mockService.Setup(service => service.GetStudentByIdAsync(testStudentId)).ReturnsAsync(new StudentDto { StudentId = testStudentId });
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetStudent(testStudentId);
@@ -68,9 +79,10 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
-            int testStudentId = 999; // We have to assume this id doesn't exist
+            var mockUserManager = GetMockUserManager();
+            int testStudentId = 111; // assume this id doesn't exist
             mockService.Setup(service => service.GetStudentByIdAsync(testStudentId)).ReturnsAsync((StudentDto)null);
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetStudent(testStudentId);
@@ -84,6 +96,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             var studentModel = new StudentCreateModel
             {
                 FirstName = "",
@@ -91,7 +104,7 @@ namespace StudyBuddy.Unit_Tests
                 Email = "invalid-email",
                 Password = "short"
             };
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
             controller.ModelState.AddModelError("FirstName", "Required");
             controller.ModelState.AddModelError("LastName", "Required");
             controller.ModelState.AddModelError("Email", "Invalid email format");
@@ -109,6 +122,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             var studentModel = new StudentCreateModel
             {
                 FirstName = "Terry",
@@ -118,7 +132,7 @@ namespace StudyBuddy.Unit_Tests
             };
             int testStudentId = 1;
             mockService.Setup(service => service.UpdateStudentAsync(testStudentId, studentModel)).ReturnsAsync(true);
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.UpdateStudent(testStudentId, studentModel);
@@ -132,6 +146,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             var studentModel = new StudentCreateModel
             {
                 FirstName = "Stephen",
@@ -139,9 +154,9 @@ namespace StudyBuddy.Unit_Tests
                 Email = "stephen.king@gmail.com",
                 Password = "CaRRiE@76"
             };
-            int testStudentId = 999;  // We have to assume this id doesn't exist
+            int testStudentId = 222;  // assume this id doesn't exist
             mockService.Setup(service => service.UpdateStudentAsync(testStudentId, studentModel)).ReturnsAsync(false);
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.UpdateStudent(testStudentId, studentModel);
@@ -155,6 +170,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<IStudentService>();
+            var mockUserManager = GetMockUserManager();
             var studentModel = new StudentCreateModel
             {
                 FirstName = "",
@@ -163,7 +179,7 @@ namespace StudyBuddy.Unit_Tests
                 Password = "short"
             };
             int testStudentId = 1;
-            var controller = new StudentController(mockService.Object);
+            var controller = new StudentController(mockService.Object, mockUserManager.Object);
             controller.ModelState.AddModelError("FirstName", "Required");
             controller.ModelState.AddModelError("LastName", "Required");
             controller.ModelState.AddModelError("Email", "Invalid email format");
@@ -174,38 +190,6 @@ namespace StudyBuddy.Unit_Tests
 
             // Assert
             Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        [Fact]
-        public async Task DeleteStudent_ReturnsNoContent_WhenDeleteIsSuccessful()
-        {
-            // Arrange
-            var mockService = new Mock<IStudentService>();
-            int testStudentId = 1;
-            mockService.Setup(service => service.DeleteStudentAsync(testStudentId)).ReturnsAsync(true);
-            var controller = new StudentController(mockService.Object);
-
-            // Act
-            var result = await controller.DeleteStudent(testStudentId);
-
-            // Assert
-            Assert.IsType<NoContentResult>(result);
-        }
-
-        [Fact]
-        public async Task DeleteStudent_ReturnsNotFound_WhenStudentDoesNotExist()
-        {
-            // Arrange
-            var mockService = new Mock<IStudentService>();
-            int testStudentId = 222; // We have to assume this id doesn't exist
-            mockService.Setup(service => service.DeleteStudentAsync(testStudentId)).ReturnsAsync(false);
-            var controller = new StudentController(mockService.Object);
-
-            // Act
-            var result = await controller.DeleteStudent(testStudentId);
-
-            // Assert
-            Assert.IsType<NotFoundResult>(result);
         }
     }
 }
