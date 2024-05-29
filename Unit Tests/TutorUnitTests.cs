@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
 using StudyBuddy.Controllers;
 using StudyBuddy.Services;
@@ -12,13 +13,21 @@ namespace StudyBuddy.Unit_Tests
 {
     public class TutorUnitTests
     {
+        private Mock<UserManager<IdentityUser>> GetMockUserManager()
+        {
+            var store = new Mock<IUserStore<IdentityUser>>();
+            var mockUserManager = new Mock<UserManager<IdentityUser>>(store.Object, null, null, null, null, null, null, null, null);
+            return mockUserManager;
+        }
+
         [Fact]
         public async Task GetTutors_ReturnsOkObjectResult_WithListOfTutors()
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             mockService.Setup(service => service.GetAllTutorsAsync()).ReturnsAsync(new List<TutorDto>());
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetTutors();
@@ -33,8 +42,9 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             mockService.Setup(service => service.GetAllTutorsAsync()).ReturnsAsync(new List<TutorDto>());
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.GetTutors();
@@ -45,12 +55,12 @@ namespace StudyBuddy.Unit_Tests
             Assert.Empty(returnedTutors);
         }
 
-
         [Fact]
         public async Task CreateTutor_ReturnsBadRequest_WhenDataIsInvalid()
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             var tutorModel = new TutorCreateModel
             {
                 FirstName = "",
@@ -58,7 +68,7 @@ namespace StudyBuddy.Unit_Tests
                 Email = "invalid-email",
                 Password = "short"
             };
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
             controller.ModelState.AddModelError("FirstName", "Required");
             controller.ModelState.AddModelError("LastName", "Required");
             controller.ModelState.AddModelError("Email", "Invalid email format");
@@ -76,6 +86,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             var tutorModel = new TutorCreateModel
             {
                 FirstName = "Carrie",
@@ -97,7 +108,7 @@ namespace StudyBuddy.Unit_Tests
             mockService.Setup(service => service.GetTutorByIdAsync(testTutorId)).ReturnsAsync(existingTutor);
             mockService.Setup(service => service.UpdateTutorAsync(testTutorId, tutorModel)).ReturnsAsync(true);
 
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.UpdateTutor(testTutorId, tutorModel);
@@ -111,6 +122,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             var tutorModel = new TutorCreateModel
             {
                 FirstName = "Han",
@@ -119,9 +131,9 @@ namespace StudyBuddy.Unit_Tests
                 ExpertiseArea = "Math",
                 Password = "eigh6#d"
             };
-            int testTutorId = 888; // We have to assume this id doesn't exist
+            int testTutorId = 111; // assume this id doesn't exist
             mockService.Setup(service => service.UpdateTutorAsync(testTutorId, tutorModel)).ReturnsAsync(false);
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.UpdateTutor(testTutorId, tutorModel);
@@ -135,6 +147,7 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             var tutorModel = new TutorCreateModel
             {
                 FirstName = "",
@@ -143,7 +156,7 @@ namespace StudyBuddy.Unit_Tests
                 Password = "short"
             };
             int testTutorId = 1;
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
             controller.ModelState.AddModelError("FirstName", "Required");
             controller.ModelState.AddModelError("LastName", "Required");
             controller.ModelState.AddModelError("Email", "Invalid email format");
@@ -161,9 +174,10 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
+            var mockUserManager = GetMockUserManager();
             int testTutorId = 1;
             mockService.Setup(service => service.DeleteTutorAsync(testTutorId)).ReturnsAsync(true);
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.DeleteTutor(testTutorId);
@@ -177,9 +191,10 @@ namespace StudyBuddy.Unit_Tests
         {
             // Arrange
             var mockService = new Mock<ITutorService>();
-            int testTutorId = 777; // We have to assume this id doesn't exist
+            var mockUserManager = GetMockUserManager();
+            int testTutorId = 222; // assume this id doesn't exist
             mockService.Setup(service => service.DeleteTutorAsync(testTutorId)).ReturnsAsync(false);
-            var controller = new TutorController(mockService.Object);
+            var controller = new TutorController(mockService.Object, mockUserManager.Object);
 
             // Act
             var result = await controller.DeleteTutor(testTutorId);
